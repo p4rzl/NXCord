@@ -665,18 +665,19 @@ namespace SleepyDiscord {
 		nonce[3] = static_cast<uint8_t>((encryptNonce      ) & 0xff);
 
 		const std::size_t numOfBytes = rtpHeaderLength + payloadLen + crypto_aead_xchacha20poly1305_ietf_ABYTES + 4;
-		std::vector<uint8_t> packet(numOfBytes);
-		std::memcpy(packet.data(), header, rtpHeaderLength);
+		if (numOfBytes > 1400) return;
+		uint8_t packet[1400];
+		std::memcpy(packet, header, rtpHeaderLength);
 
 		unsigned long long ciphertextLen = 0;
 		crypto_aead_xchacha20poly1305_ietf_encrypt(
-			packet.data() + rtpHeaderLength, &ciphertextLen,
+			packet + rtpHeaderLength, &ciphertextLen,
 			payload, payloadLen,
 			header, rtpHeaderLength,
 			nullptr, nonce, secretKey);
 
-		std::memcpy(packet.data() + rtpHeaderLength + ciphertextLen, nonce, 4);
-		UDP.send(packet.data(), packet.size());
+		std::memcpy(packet + rtpHeaderLength + ciphertextLen, nonce, 4);
+		UDP.send(packet, numOfBytes);
 #endif
 	}
 
@@ -691,7 +692,7 @@ namespace SleepyDiscord {
 		constexpr std::size_t kMaxSingleNalSize = 1150;
 		if (nalLen <= kMaxSingleNalSize) {
 			sendVideoRtpPacket(nal, nalLen, timestamp90k, isLastNal);
-			if (++packetsInBurst % 4 == 0 && !isLastNal) {
+			if (++packetsInBurst % 6 == 0 && !isLastNal) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 			return;
@@ -701,7 +702,7 @@ namespace SleepyDiscord {
 		const uint8_t nalType = static_cast<uint8_t>(nalHeader & 0x1F);
 		constexpr std::size_t kMaxFragPayload = kMaxSingleNalSize - 2;
 
-		std::vector<uint8_t> fuPacket(kMaxSingleNalSize);
+		uint8_t fuPacket[kMaxSingleNalSize];
 		std::size_t offset = 1;
 		while (offset < nalLen) {
 			const std::size_t remaining = nalLen - offset;
@@ -715,10 +716,10 @@ namespace SleepyDiscord {
 			);
 			fuPacket[0] = fuIndicator;
 			fuPacket[1] = fuHeader;
-			std::memcpy(fuPacket.data() + 2, nal + offset, chunkLen);
+			std::memcpy(fuPacket + 2, nal + offset, chunkLen);
 
-			sendVideoRtpPacket(fuPacket.data(), chunkLen + 2, timestamp90k, isLastNal && isLastFrag);
-			if (++packetsInBurst % 4 == 0 && !isLastFrag) {
+			sendVideoRtpPacket(fuPacket, chunkLen + 2, timestamp90k, isLastNal && isLastFrag);
+			if (++packetsInBurst % 6 == 0 && !isLastFrag) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 			offset += chunkLen;

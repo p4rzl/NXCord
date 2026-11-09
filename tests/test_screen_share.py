@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
 
     NXCord::EncodedH264Frame encoded;
     encoder.encodeFrame(y.data(), 640, u.data(), 320, v.data(), 320, false, encoded);
-    if (f == 0 || f == 12) {
+    if (f == 0 || f == 10) {
       assert(encoded.isKeyFrame);
       assert(encoded.spsLen > 0 && encoded.ppsLen > 0);
     } else {

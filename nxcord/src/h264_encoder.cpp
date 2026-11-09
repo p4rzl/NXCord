@@ -270,20 +270,20 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
   outFrame.ppsLen = 0;
 
   const bool isKeyFrame =
-      forceKeyFrame || !hasReference_ || (frameNum_ % 12 == 0);
+      forceKeyFrame || !hasReference_ || (frameNum_ % 10 == 0);
   outFrame.isKeyFrame = isKeyFrame;
 
   if (isKeyFrame) {
-    outFrame.annexB.reserve(40 * 1024);
+    outFrame.annexB.reserve(32 * 1024);
     buildSPS(outFrame.annexB, &outFrame.spsLen);
     buildPPS(outFrame.annexB, &outFrame.ppsLen);
     frameNum_ = 0;
   } else {
-    outFrame.annexB.reserve(16 * 1024);
+    outFrame.annexB.reserve(12 * 1024);
   }
 
   BitWriter bw;
-  bw.reserve(isKeyFrame ? 32 * 1024 : 12 * 1024);
+  bw.reserve(isKeyFrame ? 28 * 1024 : 10 * 1024);
 
   // Slice Header
   bw.writeUE(0);                      // first_mb_in_slice = 0
@@ -306,75 +306,15 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
   bw.writeSE(0);   // slice_qp_delta = 0
   bw.writeUE(1);   // disable_deblocking_filter_idc = 1
 
-  uint8_t totalCoeffLuma[kMbWidth * kMbHeight][16] = {};
-  uint8_t totalCoeffChroma[kMbWidth * kMbHeight][2][4] = {};
-
-  auto getLumaNC = [&](int mbX, int mbY, int blkIdx) -> int {
-    const int bx = kLuma4x4BlockX[blkIdx];
-    const int by = kLuma4x4BlockY[blkIdx];
-    int nA = -1, nB = -1;
-    if (bx > 0) {
-      for (int i = 0; i < 16; ++i) {
-        if (kLuma4x4BlockX[i] == bx - 1 && kLuma4x4BlockY[i] == by) {
-          nA = totalCoeffLuma[mbY * kMbWidth + mbX][i];
-          break;
-        }
-      }
-    } else if (mbX > 0) {
-      for (int i = 0; i < 16; ++i) {
-        if (kLuma4x4BlockX[i] == 3 && kLuma4x4BlockY[i] == by) {
-          nA = totalCoeffLuma[mbY * kMbWidth + (mbX - 1)][i];
-          break;
-        }
-      }
-    }
-    if (by > 0) {
-      for (int i = 0; i < 16; ++i) {
-        if (kLuma4x4BlockX[i] == bx && kLuma4x4BlockY[i] == by - 1) {
-          nB = totalCoeffLuma[mbY * kMbWidth + mbX][i];
-          break;
-        }
-      }
-    } else if (mbY > 0) {
-      for (int i = 0; i < 16; ++i) {
-        if (kLuma4x4BlockX[i] == bx && kLuma4x4BlockY[i] == 3) {
-          nB = totalCoeffLuma[(mbY - 1) * kMbWidth + mbX][i];
-          break;
-        }
-      }
-    }
-    if (nA >= 0 && nB >= 0) return (nA + nB + 1) >> 1;
-    if (nA >= 0) return nA;
-    if (nB >= 0) return nB;
-    return 0;
-  };
-
-  auto getChromaNC = [&](int mbX, int mbY, int iCbCr, int blkIdx) -> int {
-    const int bx = blkIdx & 1;
-    const int by = blkIdx >> 1;
-    int nA = -1, nB = -1;
-    if (bx > 0) {
-      nA = totalCoeffChroma[mbY * kMbWidth + mbX][iCbCr][by * 2 + (bx - 1)];
-    } else if (mbX > 0) {
-      nA = totalCoeffChroma[mbY * kMbWidth + (mbX - 1)][iCbCr][by * 2 + 1];
-    }
-    if (by > 0) {
-      nB = totalCoeffChroma[mbY * kMbWidth + mbX][iCbCr][(by - 1) * 2 + bx];
-    } else if (mbY > 0) {
-      nB = totalCoeffChroma[(mbY - 1) * kMbWidth + mbX][iCbCr][2 + bx];
-    }
-    if (nA >= 0 && nB >= 0) return (nA + nB + 1) >> 1;
-    if (nA >= 0) return nA;
-    if (nB >= 0) return nB;
-    return 0;
-  };
+  // O(1) neighbor TotalCoeff state: only 160 bytes for top row + 4 bytes for left col
+  uint8_t topCoeffLuma[kMbWidth * 4] = {};
+  uint8_t leftCoeffLuma[4] = {};
+  uint8_t curMbCoeffLuma[4][4] = {};
 
   uint32_t skipRun = 0;
 
   for (int mbY = 0; mbY < kMbHeight; ++mbY) {
     for (int mbX = 0; mbX < kMbWidth; ++mbX) {
-      const int mbIdx = mbY * kMbWidth + mbX;
-
       if (!isKeyFrame) {
         int blockSadY = 0;
         int maxDiffY = 0;
@@ -395,7 +335,7 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
             if (diff > maxDiffY) maxDiffY = diff;
           }
         }
-        if (blockSadY <= 48 && maxDiffY <= 5) {
+        if (blockSadY <= 96 && maxDiffY <= 10) {
           int sumU = 0, sumV = 0, refSumU = 0, refSumV = 0;
           for (int dy = 0; dy < 8; ++dy) {
             const int py = mbY * 8 + dy;
@@ -413,7 +353,11 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
           }
           const int diffU = std::abs(((sumU + 32) >> 6) - ((refSumU + 32) >> 6));
           const int diffV = std::abs(((sumV + 32) >> 6) - ((refSumV + 32) >> 6));
-          if (diffU <= 4 && diffV <= 4) {
+          if (diffU <= 6 && diffV <= 6) {
+            for (int i = 0; i < 4; ++i) {
+              topCoeffLuma[mbX * 4 + i] = 0;
+              leftCoeffLuma[i] = 0;
+            }
             ++skipRun;
             continue;
           }
@@ -425,6 +369,7 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
       // 1. Luma 4x4 DC prediction and quantization (I_4x4 mode 2 = Intra_4x4_DC)
       int32_t lumaDC[16];
       bool hasNonZeroLuma = false;
+      const int deadzoneDiv = isKeyFrame ? 3 : 4;
       for (int idx = 0; idx < 16; ++idx) {
         const int bx = kLuma4x4BlockX[idx];
         const int by = kLuma4x4BlockY[idx];
@@ -460,7 +405,7 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
         }
 
         const int32_t absR = std::abs(r);
-        int32_t q = (absR * kMf00 + ((1 << kQbits) / 3)) >> kQbits;
+        int32_t q = (absR * kMf00 + ((1 << kQbits) / deadzoneDiv)) >> kQbits;
         if (r < 0) q = -q;
         lumaDC[idx] = q;
         if (q != 0) hasNonZeroLuma = true;
@@ -534,7 +479,7 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
         const int32_t h0 = d[0] + d[1] + d[2] + d[3];
         const int32_t absH = std::abs(h0);
         int32_t q0 =
-            (absH * kMf00 + ((1 << (kQbits + 1)) / 3)) >> (kQbits + 1);
+            (absH * kMf00 + ((1 << (kQbits + 1)) / deadzoneDiv)) >> (kQbits + 1);
         if (h0 < 0) q0 = -q0;
         chromaDC[c][0] = q0;
         chromaDC[c][1] = 0;
@@ -561,19 +506,9 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
       const uint32_t mbType = isKeyFrame ? 0 : 5;  // I_4x4
 
       bw.writeUE(mbType);
-      // 16 blocks: if block (0,0) has neither left nor top, pred is already 2 (DC).
-      // Wait: if x0 > 0 && y0 == 0 (first row, mbX > 0) or x0 == 0 && y0 > 0 (first col, mbY > 0),
-      // H.264 spec 8.3.1.1 says dcPredModePredictedFlag = 1 when EITHER left OR top is unavailable!
-      // And when both are available, both have mode 2, so pred is 2!
-      // Thus predIntra4x4PredMode is ALWAYS 2 for every block in the frame!
       bw.writeBits(0xFFFF, 16);  // prev_intra4x4_pred_mode_flag = 1 x 16
       bw.writeUE(0);             // intra_chroma_pred_mode = 0 (DC)
 
-      // coded_block_pattern me(v) Table 9-4 for Intra_4x4:
-      // cbp=31 (Luma=15, Chroma=1) -> codeNum=1
-      // cbp=15 (Luma=15, Chroma=0) -> codeNum=2
-      // cbp=0  (Luma=0,  Chroma=0) -> codeNum=3
-      // cbp=16 (Luma=0,  Chroma=1) -> codeNum=16
       uint32_t cbpCodeNum = 3;
       if (cbpLuma == 15 && cbpChroma == 1)
         cbpCodeNum = 1;
@@ -590,10 +525,31 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
       // Luma4x4Level (16coeffs per 4x4 block; index 0 is the 4x4 DC!)
       if (cbpLuma > 0) {
         for (int idx = 0; idx < 16; ++idx) {
-          const int nC = getLumaNC(mbX, mbY, idx);
+          const int bx = kLuma4x4BlockX[idx];
+          const int by = kLuma4x4BlockY[idx];
+          int nA = -1, nB = -1;
+          if (bx > 0)
+            nA = curMbCoeffLuma[by][bx - 1];
+          else if (mbX > 0)
+            nA = leftCoeffLuma[by];
+          if (by > 0)
+            nB = curMbCoeffLuma[by - 1][bx];
+          else if (mbY > 0)
+            nB = topCoeffLuma[mbX * 4 + bx];
+          const int nC = (nA >= 0 && nB >= 0) ? ((nA + nB + 1) >> 1)
+                                              : (nA >= 0 ? nA : (nB >= 0 ? nB : 0));
           const int32_t val = lumaDC[idx];
           writeCavlcSingleDC(bw, nC, val);
-          totalCoeffLuma[mbIdx][idx] = (val != 0) ? 1 : 0;
+          curMbCoeffLuma[by][bx] = (val != 0) ? 1 : 0;
+        }
+        for (int i = 0; i < 4; ++i) {
+          topCoeffLuma[mbX * 4 + i] = curMbCoeffLuma[3][i];
+          leftCoeffLuma[i] = curMbCoeffLuma[i][3];
+        }
+      } else {
+        for (int i = 0; i < 4; ++i) {
+          topCoeffLuma[mbX * 4 + i] = 0;
+          leftCoeffLuma[i] = 0;
         }
       }
 
@@ -602,7 +558,6 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
           writeCavlcSingleDC(bw, -1, chromaDC[iCbCr][0]);
         }
       }
-      (void)getChromaNC;
     }
   }
 

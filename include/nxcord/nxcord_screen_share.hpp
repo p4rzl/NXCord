@@ -37,7 +37,10 @@ class NXCordScreenShare {
   void *_tj = nullptr;
   bool _capssc_initialized = false;
   uint64_t _start_time_ms = 0;
+  uint32_t _last_ts90k = 0;
+  uint32_t _frames_sent = 0;
   int _consecutive_failures = 0;
+  int _preferred_layer_stack = 0;
 
   std::vector<uint8_t> _jpeg_buf;
   std::vector<uint8_t> _y_plane;

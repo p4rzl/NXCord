@@ -8,9 +8,16 @@
 #include <nxcord/nxcord_screen_share.hpp>
 
 void screen_share_capture_thread(NXCordScreenShare *self) {
+  if (!self->_capture_thread.isActive()) {
+    return;
+  }
+
   const time_t t0 = Utils::current_time_millis();
 
   if (self->captureFrameToYuv()) {
+    if (!self->_capture_thread.isActive()) {
+      return;
+    }
     self->_consecutive_failures = 0;
     self->_encoder.encodeFrame(
         self->_y_plane.data(), NXCord::H264Encoder::kWidth,
@@ -18,35 +25,56 @@ void screen_share_capture_thread(NXCordScreenShare *self) {
         self->_v_plane.data(), NXCord::H264Encoder::kWidth / 2, false,
         self->_encoded_frame);
 
+    const uint64_t now_ms =
+        static_cast<uint64_t>(Utils::current_time_millis());
     const uint64_t elapsed_ms =
-        static_cast<uint64_t>(Utils::current_time_millis()) -
-        self->_start_time_ms;
-    const uint32_t ts90k = static_cast<uint32_t>(elapsed_ms * 90ULL);
-    if (self->_send_callback) {
+        (now_ms > self->_start_time_ms) ? (now_ms - self->_start_time_ms) : 0;
+    uint32_t ts90k = static_cast<uint32_t>(elapsed_ms * 90ULL);
+    if (self->_frames_sent > 0 &&
+        static_cast<int32_t>(ts90k - self->_last_ts90k) < 4500) {
+      ts90k = self->_last_ts90k + 11250U;  // Monotonic ~8 FPS step (125 ms)
+    }
+    self->_last_ts90k = ts90k;
+    ++self->_frames_sent;
+
+    if (self->_frames_sent <= 3 || (self->_frames_sent % 80) == 0) {
+      Logger::write(
+          "NXCordScreenShare: frame %u sent (%zu bytes, key=%d)\n",
+          self->_frames_sent, self->_encoded_frame.annexB.size(),
+          self->_encoded_frame.isKeyFrame ? 1 : 0);
+    }
+
+    if (self->_send_callback && self->_capture_thread.isActive()) {
       self->_send_callback(self->_encoded_frame, ts90k);
     }
   } else {
     if (++self->_consecutive_failures == 20 && self->_error_callback) {
+      Logger::write("NXCordScreenShare: 20 consecutive capture failures\n");
       self->_error_callback(
           "Impossibile catturare lo schermo (caps:sc). Verifica che nessun "
           "altro modulo stia bloccando la cattura.");
     }
   }
 
-  const time_t frame_ms = Utils::current_time_millis() - t0;
-  constexpr time_t kTargetFrameMs = 100;  // 10 FPS
-  if (frame_ms < kTargetFrameMs) {
-    svcSleepThread(static_cast<u64>(kTargetFrameMs - frame_ms) * 1000000ULL);
-  } else {
-    svcSleepThread(5000000ULL);  // 5 ms yield
+  if (!self->_capture_thread.isActive()) {
+    return;
   }
+
+  const time_t frame_ms = Utils::current_time_millis() - t0;
+  constexpr time_t kTargetFrameMs = 125;  // 8 FPS for minimal system overhead
+  constexpr time_t kMinRestMs = 30;       // Always leave >=30ms idle gap
+  const time_t sleep_ms = std::max(kMinRestMs, kTargetFrameMs - frame_ms);
+  svcSleepThread(static_cast<u64>(sleep_ms) * 1000000ULL);
 }
 
 NXCordScreenShare::NXCordScreenShare(SendFrameCallback sendCallback,
                                      ErrorCallback errorCallback)
     : _send_callback(std::move(sendCallback)),
       _error_callback(std::move(errorCallback)),
-      _capture_thread(this, screen_share_capture_thread, 0x20000, false) {}
+      // parent_loop = true so LoopThread repeats while active;
+      // prio = 0x34 (52) is lower priority than audio/IPC (0x2C = 44) on Core 3.
+      _capture_thread(this, screen_share_capture_thread, 0x10000, true, 0x34,
+                      -2) {}
 
 NXCordScreenShare::~NXCordScreenShare() { stop(); }
 
@@ -83,10 +111,14 @@ bool NXCordScreenShare::start() {
   _v_plane.assign((NXCord::H264Encoder::kWidth / 2) *
                       (NXCord::H264Encoder::kMbHeight * 8),
                   128);
+  _encoded_frame.annexB.reserve(32 * 1024);
 
   _encoder.reset();
   _start_time_ms = static_cast<uint64_t>(Utils::current_time_millis());
+  _last_ts90k = 0;
+  _frames_sent = 0;
   _consecutive_failures = 0;
+  _preferred_layer_stack = static_cast<int>(ViLayerStack_Default);
 
   _capture_thread.start();
   Logger::write("NXCordScreenShare: started\n");
@@ -104,7 +136,7 @@ void NXCordScreenShare::stop() {
   if (_capssc_initialized) {
     capsscExit();
     _capssc_initialized = false;
-    Logger::write("NXCordScreenShare: stopped\n");
+    Logger::write("NXCordScreenShare: stopped after %u frames\n", _frames_sent);
   }
   _jpeg_buf.clear();
   _jpeg_buf.shrink_to_fit();
@@ -126,24 +158,24 @@ void NXCordScreenShare::stop() {
 
 bool NXCordScreenShare::captureFrameToYuv() {
   u64 jpeg_size = 0;
-  constexpr s64 kTimeoutNs = 100000000LL;  // 100 ms
-  Result rc = capsscCaptureJpegScreenShot(&jpeg_size, _jpeg_buf.data(),
-                                          _jpeg_buf.size(), ViLayerStack_Default,
-                                          kTimeoutNs);
-  if (R_FAILED(rc)) {
-    rc = capsscCaptureJpegScreenShot(&jpeg_size, _jpeg_buf.data(),
-                                     _jpeg_buf.size(), ViLayerStack_Screenshot,
-                                     kTimeoutNs);
-  }
-  if (R_FAILED(rc)) {
-    rc = capsscCaptureJpegScreenShot(
-        &jpeg_size, _jpeg_buf.data(), _jpeg_buf.size(),
-        ViLayerStack_ApplicationForDebug, kTimeoutNs);
-  }
+  constexpr s64 kTimeoutNs = 50000000LL;  // 50 ms timeout
 
-  if (R_SUCCEEDED(rc) && jpeg_size > 0 && jpeg_size <= _jpeg_buf.size()) {
-    if (decodeJpegToYuv(_jpeg_buf.data(), static_cast<size_t>(jpeg_size))) {
-      return true;
+  const ViLayerStack stacks[3] = {
+      static_cast<ViLayerStack>(_preferred_layer_stack),
+      ViLayerStack_Screenshot,
+      ViLayerStack_ApplicationForDebug,
+  };
+
+  Result rc = -1;
+  for (int i = 0; i < 3; ++i) {
+    if (i > 0 && stacks[i] == stacks[0]) continue;
+    rc = capsscCaptureJpegScreenShot(&jpeg_size, _jpeg_buf.data(),
+                                     _jpeg_buf.size(), stacks[i], kTimeoutNs);
+    if (R_SUCCEEDED(rc) && jpeg_size > 0 && jpeg_size <= _jpeg_buf.size()) {
+      _preferred_layer_stack = static_cast<int>(stacks[i]);
+      if (decodeJpegToYuv(_jpeg_buf.data(), static_cast<size_t>(jpeg_size))) {
+        return true;
+      }
     }
   }
 
@@ -169,7 +201,8 @@ bool NXCordScreenShare::decodeJpegToYuv(const uint8_t *jpegData,
     int strides[3] = {kDstW, kDstW / 2, kDstW / 2};
     if (tjDecompressToYUVPlanes(_tj, jpegData,
                                 static_cast<unsigned long>(jpegSize), planes,
-                                kDstW, strides, kDstH, TJFLAG_FASTDCT) == 0) {
+                                kDstW, strides, kDstH,
+                                TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE) == 0) {
       return true;
     }
   } else if (subsamp == TJSAMP_422) {
@@ -181,7 +214,8 @@ bool NXCordScreenShare::decodeJpegToYuv(const uint8_t *jpegData,
     int strides[3] = {kDstW, kDstW / 2, kDstW / 2};
     if (tjDecompressToYUVPlanes(_tj, jpegData,
                                 static_cast<unsigned long>(jpegSize), planes,
-                                kDstW, strides, kDstH, TJFLAG_FASTDCT) == 0) {
+                                kDstW, strides, kDstH,
+                                TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE) == 0) {
       for (int y = 0; y < kDstH / 2; ++y) {
         const uint8_t *u0 = _u_422.data() + (y * 2) * (kDstW / 2);
         const uint8_t *u1 = u0 + (kDstW / 2);
@@ -204,7 +238,7 @@ bool NXCordScreenShare::decodeJpegToYuv(const uint8_t *jpegData,
   }
   if (tjDecompress2(_tj, jpegData, static_cast<unsigned long>(jpegSize),
                     _rgb_buf.data(), kDstW, kDstW * 3, kDstH, TJPF_RGB,
-                    TJFLAG_FASTDCT) != 0) {
+                    TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE) != 0) {
     return false;
   }
 
@@ -250,7 +284,7 @@ bool NXCordScreenShare::decodeJpegToYuv(const uint8_t *jpegData,
 
 bool NXCordScreenShare::captureRawStreamToYuv() {
   u64 size = 0, width = 0, height = 0;
-  constexpr s64 kTimeoutNs = 100000000LL;
+  constexpr s64 kTimeoutNs = 50000000LL;
   Result rc = capsscOpenRawScreenShotReadStream(
       &size, &width, &height, ViLayerStack_Default, kTimeoutNs);
   if (R_FAILED(rc)) {
