@@ -126,6 +126,7 @@ int main(int argc, char** argv) {
 
   std::vector<uint8_t> y(640 * 360), u(320 * 180), v(320 * 180);
   FILE* outFile = (argc > 1) ? fopen(argv[1], "wb") : nullptr;
+  const bool noisy = argc > 2;
 
   for (int f = 0; f < 14; ++f) {
     for (int py = 0; py < 360; ++py) {
@@ -149,6 +150,12 @@ int main(int argc, char** argv) {
       }
     }
 
+    if (noisy) {
+      uint32_t seed = 12345u + f;
+      for (auto& b : y) { seed = seed * 1664525u + 1013904223u; b = static_cast<uint8_t>((b + (seed >> 24)) >> 1); }
+      for (auto& b : u) { seed = seed * 1664525u + 1013904223u; b = static_cast<uint8_t>(16 + (seed >> 24) % 220); }
+      for (auto& b : v) { seed = seed * 1664525u + 1013904223u; b = static_cast<uint8_t>(16 + (seed >> 24) % 220); }
+    }
     NXCord::EncodedH264Frame encoded;
     encoder.encodeFrame(y.data(), 640, u.data(), 320, v.data(), 320, false, encoded);
     if (f == 0 || f == 10) {
@@ -157,7 +164,7 @@ int main(int argc, char** argv) {
     } else {
       assert(!encoded.isKeyFrame);
       assert(encoded.spsLen == 0 && encoded.ppsLen == 0);
-      assert(encoded.annexB.size() < 6000);
+      if (!noisy) assert(encoded.annexB.size() < 6000);
     }
 
     conn.rtpPackets.clear();
@@ -198,8 +205,16 @@ with tempfile.TemporaryDirectory(prefix="nxcord-screen-share-") as temp:
         "-o", str(binary)
     ], check=True)
     subprocess.run([str(binary), str(h264_out)], check=True)
+    noisy_out = temp / "noisy.264"
+    subprocess.run([str(binary), str(noisy_out), "noisy"], check=True)
 
     if shutil.which("ffmpeg"):
-        subprocess.run([
+        # ffmpeg exits 0 even on bitstream errors; any stderr output is a failure.
+        proc = subprocess.run([
             "ffmpeg", "-v", "error", "-i", str(h264_out), "-f", "null", "-"
-        ], check=True)
+        ], capture_output=True, text=True)
+        assert proc.returncode == 0 and not proc.stderr.strip(), proc.stderr[:2000]
+        proc = subprocess.run([
+            "ffmpeg", "-v", "error", "-i", str(noisy_out), "-f", "null", "-"
+        ], capture_output=True, text=True)
+        assert proc.returncode == 0 and not proc.stderr.strip(), proc.stderr[:2000]

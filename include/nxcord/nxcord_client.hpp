@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "discord_client.hpp"
+#include "nxcord_game_audio.hpp"
 #include "nxcord_screen_share.hpp"
 #include "nxcord_settings.hpp"
 
@@ -39,6 +40,7 @@ class NXCordClient : public DiscordClient {
   LocalVoiceContext _current_voice_context;
   SleepyDiscord::VoiceConnection *_current_voice_connection = nullptr;
   std::unique_ptr<NXCordScreenShare> _screen_share;
+  std::unique_ptr<NXCordGameAudio> _game_audio;
   float _previous_mic_volume = 0;
   IPCStruct::VoiceStatus _voice_status{};
   time_t _voice_started = 0;

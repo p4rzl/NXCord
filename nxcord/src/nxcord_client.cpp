@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <common/logger.hpp>
 #include <common/utils.hpp>
 #include <nxcord/discord_websocket.hpp>
@@ -71,7 +72,30 @@ class AudioSender : public SleepyDiscord::AudioVectorSource {
 
     std::string threshold_str = _client.getSettings().getvoicemic_threshold();
     float threshold = std::stof(threshold_str);
-    return average_volume > std::max(threshold, 0.00001f);
+    bool send = average_volume > std::max(threshold, 0.00001f);
+
+    // Game audio (only while screen sharing) is mixed into the mic stream and
+    // always bypasses the voice gate so the viewers keep hearing the game.
+    if (_client._game_audio && _client._game_audio->isActive()) {
+      constexpr size_t kFrameSamples = Utils::opus_framesize_bytes / sizeof(int16_t);
+      int16_t game[kFrameSamples];
+      const size_t got = _client._game_audio->read(game, kFrameSamples);
+      if (got > 0) {
+        if (_capture.size() != kFrameSamples) {
+          _capture.assign(kFrameSamples, 0);
+        }
+        // Game audio is attenuated to ~60% so the voice stays intelligible.
+        for (size_t i = 0; i < kFrameSamples; ++i) {
+          const int mixed = static_cast<int>(_capture[i]) +
+                            (static_cast<int>(game[i]) * 6) / 10;
+          _capture[i] = static_cast<SleepyDiscord::AudioSample>(
+              std::clamp(mixed, static_cast<int>(Utils::audio_sample_min),
+                         static_cast<int>(Utils::audio_sample_max)));
+        }
+        send = true;
+      }
+    }
+    return send;
   }
 
   void read(SleepyDiscord::AudioTransmissionDetails &details,
@@ -528,6 +552,10 @@ float NXCordClient::getVoiceUserMultiplier(int64_t user_id) const {
 }
 
 void NXCordClient::stopScreenShare() {
+  if (_game_audio) {
+    _game_audio->stop();
+    _game_audio.reset();
+  }
   if (_screen_share) {
     _screen_share->stop();
     _screen_share.reset();
@@ -576,6 +604,11 @@ void NXCordClient::setScreenSharing(bool enabled) {
       });
 
   if (_screen_share->start()) {
+    _game_audio = std::make_unique<NXCordGameAudio>();
+    if (!_game_audio->start()) {
+      Logger::write("Game audio capture unavailable; sharing video only\n");
+      _game_audio.reset();
+    }
     _voice_status.screen_sharing = true;
     std::strncpy(_voice_status.detail,
                  "Condivisione schermo attiva (640x360 H.264).",
@@ -589,3 +622,4 @@ void NXCordClient::setScreenSharing(bool enabled) {
 
 #include "h264_encoder.cpp"
 #include "nxcord_screen_share.cpp"
+#include "nxcord_game_audio.cpp"

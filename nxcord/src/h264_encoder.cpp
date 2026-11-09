@@ -202,8 +202,7 @@ void buildSPS(std::vector<uint8_t> &out, size_t *outLen) {
   bw.writeBits(30, 8);    // Level 3.0
   bw.writeUE(0);          // seq_parameter_set_id = 0
   bw.writeUE(0);          // log2_max_frame_num_minus4 = 0 (max 16)
-  bw.writeUE(0);          // pic_order_cnt_type = 0
-  bw.writeUE(2);          // log2_max_pic_order_cnt_lsb_minus4 = 2 (max 64)
+  bw.writeUE(2);          // pic_order_cnt_type = 2 (output order == decode order)
   bw.writeUE(1);          // max_num_ref_frames = 1
   bw.writeBit(0);         // gaps_in_frame_num_value_allowed_flag = 0
   bw.writeUE(H264Encoder::kMbWidth - 1);   // 39 -> 640px
@@ -294,7 +293,6 @@ void H264Encoder::encodeFrame(const uint8_t *yPlane, int yStride,
     bw.writeUE(idrPicId_ & 0xFF);
     ++idrPicId_;
   }
-  bw.writeBits((frameNum_ * 2) & 0x3F, 6);  // pic_order_cnt_lsb (6 bits)
   if (!isKeyFrame) {
     bw.writeBit(0);  // num_ref_idx_active_override_flag = 0
     bw.writeBit(0);  // ref_pic_list_modification_flag_l0 = 0

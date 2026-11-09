@@ -73,7 +73,7 @@ NXCordScreenShare::NXCordScreenShare(SendFrameCallback sendCallback,
       _error_callback(std::move(errorCallback)),
       // parent_loop = true so LoopThread repeats while active;
       // prio = 0x34 (52) is lower priority than audio/IPC (0x2C = 44) on Core 3.
-      _capture_thread(this, screen_share_capture_thread, 0x10000, true, 0x34,
+      _capture_thread(this, screen_share_capture_thread, 0x20000, true, 0x34,
                       -2) {}
 
 NXCordScreenShare::~NXCordScreenShare() { stop(); }

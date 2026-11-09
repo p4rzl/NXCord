@@ -643,8 +643,12 @@ namespace SleepyDiscord {
 		++videoSequence;
 		++encryptNonce;
 
-		const uint8_t header[rtpHeaderLength] = {
-			0x80,
+		// One-byte RTP header extension (RFC 8285) carrying playout-delay = 0/0,
+		// like the official client. With *_rtpsize modes the 4-byte extension
+		// header is authenticated (AAD) and the extension body is encrypted
+		// together with the payload.
+		const uint8_t header[rtpHeaderLength + 4] = {
+			0x90,
 			static_cast<uint8_t>((marker ? 0x80 : 0x00) | 101),
 			static_cast<uint8_t>((videoSequence >> 8) & 0xff),
 			static_cast<uint8_t>((videoSequence >> 0) & 0xff),
@@ -656,7 +660,9 @@ namespace SleepyDiscord {
 			static_cast<uint8_t>((vSsrc         >> 16) & 0xff),
 			static_cast<uint8_t>((vSsrc         >>  8) & 0xff),
 			static_cast<uint8_t>((vSsrc         >>  0) & 0xff),
+			0xBE, 0xDE, 0x00, 0x01,
 		};
+		static const uint8_t extBody[4] = { 0x52, 0x00, 0x00, 0x00 }; // id 5, 3 bytes
 
 		uint8_t nonce[nonceSize] = { 0 };
 		nonce[0] = static_cast<uint8_t>((encryptNonce >> 24) & 0xff);
@@ -664,19 +670,23 @@ namespace SleepyDiscord {
 		nonce[2] = static_cast<uint8_t>((encryptNonce >>  8) & 0xff);
 		nonce[3] = static_cast<uint8_t>((encryptNonce      ) & 0xff);
 
-		const std::size_t numOfBytes = rtpHeaderLength + payloadLen + crypto_aead_xchacha20poly1305_ietf_ABYTES + 4;
+		const std::size_t plainLen = sizeof(extBody) + payloadLen;
+		const std::size_t numOfBytes = sizeof(header) + plainLen + crypto_aead_xchacha20poly1305_ietf_ABYTES + 4;
 		if (numOfBytes > 1400) return;
+		uint8_t plain[1400];
+		std::memcpy(plain, extBody, sizeof(extBody));
+		std::memcpy(plain + sizeof(extBody), payload, payloadLen);
 		uint8_t packet[1400];
-		std::memcpy(packet, header, rtpHeaderLength);
+		std::memcpy(packet, header, sizeof(header));
 
 		unsigned long long ciphertextLen = 0;
 		crypto_aead_xchacha20poly1305_ietf_encrypt(
-			packet + rtpHeaderLength, &ciphertextLen,
-			payload, payloadLen,
-			header, rtpHeaderLength,
+			packet + sizeof(header), &ciphertextLen,
+			plain, plainLen,
+			header, sizeof(header),
 			nullptr, nonce, secretKey);
 
-		std::memcpy(packet + rtpHeaderLength + ciphertextLen, nonce, 4);
+		std::memcpy(packet + sizeof(header) + ciphertextLen, nonce, 4);
 		UDP.send(packet, numOfBytes);
 #endif
 	}
