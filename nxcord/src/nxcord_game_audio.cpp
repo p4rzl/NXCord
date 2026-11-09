@@ -8,6 +8,20 @@
 void game_audio_thread(NXCordGameAudio *self) {
   if (!self->_thread.isActive()) return;
 
+  // All blocking audrec IPC happens here, never on the IPC/main threads.
+  if (!self->_setup_done) {
+    self->_setup_done = true;
+    self->_setup_ok = self->setup();
+    if (!self->_setup_ok) {
+      Logger::write("NXCordGameAudio: setup failed, game audio disabled\n");
+    }
+    return;
+  }
+  if (!self->_setup_ok) {
+    svcSleepThread(100000000ULL);
+    return;
+  }
+
   // Wake at most every 40 ms so stop() is prompt.
   Result rc = eventWait(&self->_event, 40000000ULL);
   if (!self->_thread.isActive()) return;
@@ -22,10 +36,15 @@ void game_audio_thread(NXCordGameAudio *self) {
     svcSleepThread(10000000ULL);
     return;
   }
-  const u64 n = std::min<u64>(released, NXCordGameAudio::kBufferCount);
-  for (u64 i = 0; i < n; ++i) {
-    auto *buf = reinterpret_cast<FinalOutputRecorderBuffer *>(released_ptrs[i]);
-    if (!buf) continue;
+  for (u64 i = 0; i < NXCordGameAudio::kBufferCount; ++i) {
+    FinalOutputRecorderBuffer *buf = nullptr;
+    for (auto &candidate : self->_bufs) {
+      if (released_ptrs[i] == reinterpret_cast<u64>(&candidate)) {
+        buf = &candidate;
+        break;
+      }
+    }
+    if (!buf) continue;  // Ignore anything that is not one of our buffers.
     const size_t bytes = std::min<size_t>(buf->data_size,
                                           NXCordGameAudio::kBufferBytes);
     const auto *samples =
@@ -49,13 +68,21 @@ void game_audio_thread(NXCordGameAudio *self) {
 
 NXCordGameAudio::NXCordGameAudio()
     // Low priority (0x38) and small stack: only copies PCM into a queue.
-    : _thread(this, game_audio_thread, 0x4000, true, 0x38, -2) {}
+    : _thread(this, game_audio_thread, 0x8000, true, 0x38, -2) {}
 
 NXCordGameAudio::~NXCordGameAudio() { stop(); }
 
 bool NXCordGameAudio::start() {
   if (_thread.isActive()) return true;
+  _setup_done = false;
+  _setup_ok = false;
+  _queue.clear();
+  _thread.start();
+  return _thread.isActive();
+}
 
+bool NXCordGameAudio::setup() {
+  Logger::write("NXCordGameAudio: audrecInitialize...\n");
   Result rc = audrecInitialize();
   if (R_FAILED(rc)) {
     Logger::write("NXCordGameAudio: audrecInitialize failed: 0x%x\n", rc);
@@ -63,12 +90,12 @@ bool NXCordGameAudio::start() {
   }
   _audrec_initialized = true;
 
+  Logger::write("NXCordGameAudio: opening recorder...\n");
   FinalOutputRecorderParameter param{48000, 2};
   FinalOutputRecorderParameterInternal out{};
   rc = audrecOpenFinalOutputRecorder(&_recorder, &param, 0, &out);
   if (R_FAILED(rc)) {
     Logger::write("NXCordGameAudio: open recorder failed: 0x%x\n", rc);
-    stop();
     return false;
   }
   _recorder_open = true;
@@ -78,17 +105,13 @@ bool NXCordGameAudio::start() {
   rc = audrecRecorderRegisterBufferEvent(&_recorder, &_event);
   if (R_FAILED(rc)) {
     Logger::write("NXCordGameAudio: register event failed: 0x%x\n", rc);
-    stop();
     return false;
   }
   _event_valid = true;
 
   for (size_t i = 0; i < kBufferCount; ++i) {
     _mem[i] = memalign(0x1000, kAllocBytes);
-    if (!_mem[i]) {
-      stop();
-      return false;
-    }
+    if (!_mem[i]) return false;
     std::memset(_mem[i], 0, kAllocBytes);
     _bufs[i] = {};
     _bufs[i].sample_buffer_ptr = reinterpret_cast<u64>(_mem[i]);
@@ -99,7 +122,6 @@ bool NXCordGameAudio::start() {
         &_recorder, reinterpret_cast<u64>(&_bufs[i]), &_bufs[i]);
     if (R_FAILED(rc)) {
       Logger::write("NXCordGameAudio: append buffer failed: 0x%x\n", rc);
-      stop();
       return false;
     }
   }
@@ -107,13 +129,8 @@ bool NXCordGameAudio::start() {
   rc = audrecRecorderStart(&_recorder);
   if (R_FAILED(rc)) {
     Logger::write("NXCordGameAudio: start failed: 0x%x\n", rc);
-    stop();
     return false;
   }
-
-  _queue.clear();
-  _queue.reserve(kMaxQueuedSamples + 960 * 2);
-  _thread.start();
   Logger::write("NXCordGameAudio: started\n");
   return true;
 }

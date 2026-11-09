@@ -36,6 +36,9 @@ class NXCordGameAudio {
  private:
   friend void game_audio_thread(NXCordGameAudio *self);
 
+  bool setup();
+  std::atomic_bool _setup_done{false};
+  std::atomic_bool _setup_ok{false};
   bool _audrec_initialized = false;
   bool _recorder_open = false;
   AudrecRecorder _recorder{};

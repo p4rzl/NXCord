@@ -609,6 +609,7 @@ void NXCordClient::setScreenSharing(bool enabled) {
       Logger::write("Game audio capture unavailable; sharing video only\n");
       _game_audio.reset();
     }
+    Logger::write("Screen share started\n");
     _voice_status.screen_sharing = true;
     std::strncpy(_voice_status.detail,
                  "Condivisione schermo attiva (640x360 H.264).",
