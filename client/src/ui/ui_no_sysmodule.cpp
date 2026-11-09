@@ -3,14 +3,15 @@
 UINoSysmodule::UINoSysmodule(const UICustomLayout::Interface& interface,
                              bool crashed)
     : UICustomLayout(interface) {
-  auto text = TextBlock::New(
-      0, 0,
+  addChrome("Sysmodule non disponibile", "NXCord richiede il servizio in background per la modalita in-game.",
+            "B Chiudi   + Chiudi");
+  auto text = UITheme::text(
+      36, 260,
       crashed
-          ? "NXCord sysmodule crashed, make sure your account is not too big."
-          : "Couldn't communicate with sysmodule, either it's not installed or "
-            "has crashed!");
-  text->SetX(SCREEN_WIDTH / 2 - text->GetTextWidth() / 2);
-  text->SetY(SCREEN_HEIGHT / 2 - text->GetTextHeight() / 2);
+          ? "Il servizio in background non risponde.\n"
+            "Controlla /config/nxcord/nxcord-sys.txt e riavvia la console."
+          : "Installa insieme NRO, sysmodule e overlay aggiornati.\n"
+            "Riavvia la console e apri di nuovo NXCord.", 23, UITheme::danger);
 
   Add(text);
 }

@@ -18,6 +18,10 @@ class NXCordService : public ams::sf::IServiceObject {
 
   template <typename O>
   static inline void setOut(const ams::sf::OutBuffer &out_path, const O &out) {
+    if (out_path.GetSize() < sizeof(out)) {
+      Logger::write("IPC output buffer too small; update NRO, sysmodule and overlay together\n");
+      return;
+    }
     std::memcpy(out_path.GetPointer(), &out, sizeof(out));
   }
 
@@ -42,6 +46,7 @@ class NXCordService : public ams::sf::IServiceObject {
   ams::Result JoinVoiceChannel(const ams::sf::InBuffer &in_path);
   ams::Result DisconnectVoiceChannel();
   ams::Result IsConnectedVoiceChannel(const ams::sf::OutBuffer &out_path);
+  ams::Result GetVoiceStatus(const ams::sf::OutBuffer &out_path);
 
   ams::Result Logout();
 
@@ -63,6 +68,8 @@ class NXCordService : public ams::sf::IServiceObject {
   ams::Result SetVoiceUserMultiplier(const ams::sf::InBuffer &in_path);
   ams::Result GetVoiceUserMultiplier(const ams::sf::InBuffer &in_path,
                                      const ams::sf::OutBuffer &out_path);
+  ams::Result SetScreenSharing(const ams::sf::InBuffer &in_path);
+  ams::Result IsScreenSharing(const ams::sf::OutBuffer &out_path);
 
  public:
   DEFINE_SERVICE_DISPATCH_TABLE{
@@ -93,6 +100,9 @@ class NXCordService : public ams::sf::IServiceObject {
       MAKE_SERVICE_COMMAND_META(GetConnectedVoiceChannel),
       MAKE_SERVICE_COMMAND_META(SetVoiceUserMultiplier),
       MAKE_SERVICE_COMMAND_META(GetVoiceUserMultiplier),
+      MAKE_SERVICE_COMMAND_META(GetVoiceStatus),
+      MAKE_SERVICE_COMMAND_META(SetScreenSharing),
+      MAKE_SERVICE_COMMAND_META(IsScreenSharing),
   };
 };
 

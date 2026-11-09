@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.20)
 
 project(nxcord-all)
 
@@ -14,10 +14,12 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMakeModules)
 include(SwitchTools)
 
 find_package(Libnx REQUIRED)
+include_directories(BEFORE SYSTEM ${CMAKE_SOURCE_DIR}/include/switch_compat)
 find_package(MbedTLS REQUIRED)
 find_package(Opus REQUIRED)
 find_package(Sodium REQUIRED)
 find_package(Zlib REQUIRED)
+add_subdirectory(externals/dave)
 
 include(externals/Atmosphere-libs/CMakeLists.txt)
 include(externals/http-parser/CMakeLists.txt)

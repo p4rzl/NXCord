@@ -10,6 +10,8 @@ set(PLUTONIUM_DEPS SDL2;
         EGL;
         drm_nouveau;
         freetype;
+        harfbuzz;
+        freetype;
         modplug;
         jpeg;
         png;

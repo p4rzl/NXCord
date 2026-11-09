@@ -58,6 +58,8 @@ class UIMain : public pu::ui::Application {
   std::shared_ptr<ResultListener> _listener;
 
   UICustomLayout::Ref _current_layout;
+  UICustomLayout::Ref _server_layout, _settings_return;
+  UIState _settings_return_state = UIState::Connected;
   UIState _previous_state;
   UICustomLayout::Ref _previous_layout;
   time_t _connection_looked_up = 0;

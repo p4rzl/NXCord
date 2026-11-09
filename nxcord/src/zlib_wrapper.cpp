@@ -18,29 +18,39 @@ void ZlibWrapper::set_stream(std::istream *stream) {
 
   _infstream.total_out = 0;
 
+  stream->clear();
   stream->seekg(0);
 }
 
 int64_t ZlibWrapper::read(char *buf, size_t size) {
-  if (_infstream.avail_in == 0) {
-    _stream_read_size = _stream->readsome(_in_buf, sizeof(_in_buf));
-    if (_stream_read_size == 0) {
-      return 0;
-    }
-    _infstream.avail_in = _stream_read_size;
-  }
-
-  _infstream.next_in = reinterpret_cast<Bytef *>(_in_buf + _stream_read_size -
-                                                 _infstream.avail_in);
-
   _infstream.avail_out = size;
   _infstream.next_out = reinterpret_cast<Bytef *>(buf);
 
-  int ret = inflate(&_infstream, Z_SYNC_FLUSH);
+  while (_infstream.avail_out == size) {
+    if (_infstream.avail_in == 0) {
+      _stream->read(_in_buf, sizeof(_in_buf));
+      _stream_read_size = _stream->gcount();
+      if (_stream_read_size <= 0) {
+        return 0;
+      }
+      _infstream.avail_in = _stream_read_size;
+    }
 
-  if (ret != Z_OK && ret != Z_STREAM_END) {
-    Logger::write("Failed to decompress zlib %d %s\n", ret, _infstream.msg);
-    return ret;
+    _infstream.next_in = reinterpret_cast<Bytef *>(
+        _in_buf + _stream_read_size - _infstream.avail_in);
+
+    int ret = inflate(&_infstream, Z_SYNC_FLUSH);
+    if (ret == Z_STREAM_END) {
+      break;
+    }
+    if (ret != Z_OK && ret != Z_BUF_ERROR) {
+      Logger::write("Failed to decompress zlib %d %s\n", ret,
+                    _infstream.msg ? _infstream.msg : "");
+      return ret;
+    }
+    if (ret == Z_BUF_ERROR && _infstream.avail_in != 0) {
+      break;
+    }
   }
   return size - _infstream.avail_out;
 }

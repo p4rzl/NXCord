@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "discord_client.hpp"
+#include "nxcord_screen_share.hpp"
 #include "nxcord_settings.hpp"
 
 class AudioReceiver;
@@ -37,7 +38,10 @@ class NXCordClient : public DiscordClient {
 
   LocalVoiceContext _current_voice_context;
   SleepyDiscord::VoiceConnection *_current_voice_connection = nullptr;
+  std::unique_ptr<NXCordScreenShare> _screen_share;
   float _previous_mic_volume = 0;
+  IPCStruct::VoiceStatus _voice_status{};
+  time_t _voice_started = 0;
   std::map<int64_t, std::vector<IPCStruct::DiscordVoiceState>> _voice_states;
 
   std::vector<IPCStruct::DiscordServer> _servers;
@@ -46,8 +50,10 @@ class NXCordClient : public DiscordClient {
   void onReady() override;
 
   inline void onDisconnect() override {
+    stopScreenShare();
     _ready = false;
     _current_voice_connection = nullptr;
+    _voice_status = {};
   }
 
   void onResumed() override;
@@ -67,7 +73,7 @@ class NXCordClient : public DiscordClient {
 
   void onDeleteChannel(SleepyDiscord::Channel channel) override;
 
-  void fillChannels(
+  bool fillChannels(
       const SleepyDiscord::Snowflake<SleepyDiscord::Server> &channel);
 
   inline std::vector<IPCStruct::DiscordChannel> *getChannelsPtr(
@@ -94,9 +100,13 @@ class NXCordClient : public DiscordClient {
   friend VoiceEventHandler;
 
  public:
+  ~NXCordClient() override;
+
   void loadSettings(std::unique_ptr<NXCordSettings> &settings);
 
   void startConnection() override;
+  void tick();
+  inline IPCStruct::VoiceStatus getVoiceStatus() const { return _voice_status; }
 
   inline bool isConnected() const { return _ready && connection != nullptr; }
 
@@ -131,8 +141,12 @@ class NXCordClient : public DiscordClient {
 
   inline const std::vector<IPCStruct::DiscordVoiceState>
       &getCurrentVoiceStates() const {
+    static const std::vector<IPCStruct::DiscordVoiceState> empty_states;
     const auto it =
         _voice_states.find(_current_voice_context.channelID.number());
+    if (it == _voice_states.end()) {
+      return empty_states;
+    }
     return it->second;
   }
 
@@ -142,4 +156,8 @@ class NXCordClient : public DiscordClient {
 
   void setVoiceUserMultiplier(int64_t user_id, float multiplier);
   float getVoiceUserMultiplier(int64_t user_id) const;
+
+  void setScreenSharing(bool enabled);
+  bool isScreenSharing() const;
+  void stopScreenShare();
 };

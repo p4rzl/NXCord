@@ -58,8 +58,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   SocketInitConfig sockConf = {
-      .bsdsockets_version = 1,
-
       .tcp_tx_buf_size = 0x800,
       .tcp_rx_buf_size = 0x1000,
       .tcp_tx_buf_max_size = 0x2EE0,
@@ -93,6 +91,8 @@ int main(int argc, char *argv[]) {
     auto main = UIMain::New(renderer, interface);
     main->Prepare();
     main->Show();
+    main.reset();
+    renderer->Finalize();
   }
 
   Logger::write("Closing services\n");

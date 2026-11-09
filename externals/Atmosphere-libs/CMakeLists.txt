@@ -20,56 +20,14 @@ add_library(stratosphere STATIC
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sm/sm_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sm/sm_manager_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sm/sm_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/kvdb/kvdb_archive.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/kvdb/kvdb_file_key_value_store.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/diag/diag_assertion_impl.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/result/result_on_assertion.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_package_system_update_task.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_package_install_task_base.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_on_memory_content_meta_database_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_read_only_content_storage_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_meta_type.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_meta_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_management_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_meta.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_storage_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_install_task_data.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_install_task_base.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_fs_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_info_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_storage_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_id_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_manager_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_placeholder_accessor.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_package_install_task.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_content_meta_database_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_make_path.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ncm/ncm_submission_package_install_task.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/nim/nim_network_install_manager_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/util/util_compression.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/util/util_ini.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/util/util_uuid_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssrv/fssrv_storage_interface_adapter.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssrv/fssrv_path_normalizer.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssrv/fssrv_filesystem_interface_adapter.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/ldr/ldr_pm_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/patcher/patcher_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/impl/lmem_impl_exp_heap.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/impl/lmem_impl_unit_heap.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/impl/lmem_impl_common_heap.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/lmem_unit_heap.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/lmem_exp_heap.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lmem/lmem_common.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/updater/updater_files.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/updater/updater_bis_management.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/updater/updater_bis_save.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/updater/updater_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/updater/updater_paths.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/cfg/cfg_sd_card.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/cfg/cfg_override.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/cfg/cfg_privileged_process.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/cfg/cfg_flags.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/cmif/sf_cmif_service_dispatch.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/cmif/sf_cmif_domain_manager.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/cmif/sf_cmif_service_object_holder.cpp
@@ -79,25 +37,7 @@ add_library(stratosphere STATIC
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/hipc/sf_hipc_server_session_manager.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/hipc/sf_hipc_mitm_query_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/sf/hipc/sf_hipc_server_domain_session_manager.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/map/map_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/boot2/boot2_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/dd/dd_io_mappings.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_partition_file_system.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/buffers/fssystem_buffer_manager_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/buffers/fssystem_file_system_buddy_heap.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_pooled_buffer.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_subdirectory_filesystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_external_code.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_directory_savedata_filesystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_partition_file_system_meta.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_utility.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_aes_ctr_storage.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_directory_redirection_filesystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_dbm_rom_path_tool.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_aes_xts_storage.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fssystem/fssystem_romfs_filesystem.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/hos/hos_version_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/hid/hid_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/impl/os_rng_manager_impl.os.horizon.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/impl/os_rng_manager_impl.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/impl/os_inter_process_event.cpp
@@ -120,46 +60,6 @@ add_library(stratosphere STATIC
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/os_thread_local_storage_api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/os_message_queue.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/os/os_system_event.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_redirect_only_location_resolver_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_content_location_resolver_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_location_resolver_manager_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_api.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_add_on_content_location_resolver_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_location_redirector.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/lr/lr_registered_location_resolver_impl.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_dbm_hierarchical_rom_file_table.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_application.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_filesystem_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_romfs_filesystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_data.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_system_save_data.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_sd_card.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_image_directory.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_game_card.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_rights_id.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_signed_system_partition.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_content_storage.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_path_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_content.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_system_data.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_dbm_rom_path_tool.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_memory_management.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_bis.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_file_storage.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_device_save_data.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_directory_accessor.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_filesystem_accessor.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_user_file.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_file_accessor.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_registrar.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_user_mount_table.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_mount_table.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_user_filesystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_mount_utils.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fsa/fs_user_directory.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_code.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_path_tool.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/fs/fs_save_data_management.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/mem/impl/mem_impl_platform.os.horizon.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/mem/impl/heap/mem_impl_heap_tls_heap_central.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Atmosphere-libs/libstratosphere/source/mem/impl/heap/mem_impl_heap_tls_heap_cache.cpp

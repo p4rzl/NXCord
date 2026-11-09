@@ -31,6 +31,10 @@ add_library(plutonium STATIC
         ${CMAKE_CURRENT_LIST_DIR}/Plutonium/Plutonium/Source/pu/audio/audio_Music.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Plutonium/Plutonium/Source/pu/pu_String.cpp)
 
+# Falling through a non-void UI callback is undefined behaviour and can be
+# compiled into a BRK instruction on Switch (e.g. closing a dialog).
+target_compile_options(plutonium PRIVATE -Werror=return-type)
+
 target_include_directories(plutonium
         PRIVATE
         ${DEVKITPRO}/portlibs/switch/include

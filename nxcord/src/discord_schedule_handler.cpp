@@ -2,6 +2,7 @@
 #include <common/utils.hpp>
 #include <nxcord/discord_schedule_handler.hpp>
 #include <set>
+#include <vector>
 
 SleepyDiscord::Timer DiscordScheduleHandler::schedule(
     SleepyDiscord::TimedTask code, const time_t milliseconds) {
@@ -19,6 +20,7 @@ SleepyDiscord::Timer DiscordScheduleHandler::schedule(
 
 void DiscordScheduleHandler::tick() {
   std::set<size_t> disabled_schedules;
+  std::vector<SleepyDiscord::TimedTask> ready_tasks;
   for (auto &pair : _scheduled_functions) {
     if (!pair.second.enabled) {
       disabled_schedules.insert(pair.first);
@@ -30,7 +32,7 @@ void DiscordScheduleHandler::tick() {
     if (pair.second.scheduled_time <= diff) {
       pair.second.enabled = false;
       disabled_schedules.insert(pair.first);
-      pair.second.function();
+      ready_tasks.push_back(pair.second.function);
     } else {
       pair.second.scheduled_time -= diff;
       pair.second.previous_time = current_time;
@@ -40,6 +42,10 @@ void DiscordScheduleHandler::tick() {
   // Remove disabled functions
   for (size_t key : disabled_schedules) {
     _scheduled_functions.erase(key);
+  }
+
+  for (auto &task : ready_tasks) {
+    task();
   }
 }
 

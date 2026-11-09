@@ -4,12 +4,11 @@
 
 UIConnectingLayout::UIConnectingLayout(const Interface &interface)
     : UICustomLayout(interface) {
-  _connecting_text =
-      TextBlock::New(0, 0, "Establishing connection...Press X to stop");
-  _connecting_text->SetX(SCREEN_WIDTH / 2 -
-                         _connecting_text->GetTextWidth() / 2);
-  _connecting_text->SetY(SCREEN_HEIGHT / 2 -
-                         _connecting_text->GetTextHeight() / 2);
+  addChrome("Connessione a Discord", "Preparazione della sessione e dell'elenco server.",
+            "B Annulla   X Annulla   + Chiudi");
+  Add(pu::ui::elm::Rectangle::New(36, 220, 1208, 350, UITheme::panel, 12));
+  _connecting_text = UITheme::text(76, 266, "Connessione in corso...", 30, UITheme::accent);
+  Add(UITheme::text(76, 338, "Gli account con molti server richiedono piu tempo.\nNon serve premere nuovamente A.\nLa sessione restera attiva anche chiudendo questa app.", 23, UITheme::muted));
 
   if (!interface->isConnected()) {
     interface->startConnection();

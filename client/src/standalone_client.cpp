@@ -53,9 +53,17 @@ IPCStruct::LoginResult StandaloneClient::attemptLogin(
   return ret;
 }
 
-bool StandaloneClient::submit2faTicket(const std::string &code) {
+IPCStruct::LoginResult StandaloneClient::submit2faTicket(
+    const std::string &code) {
   LOCK_CLIENT
-  return _nxcord_client.submit2faTicket(code);
+  std::string error;
+  bool success = _nxcord_client.submit2faTicket(code, &error);
+
+  IPCStruct::LoginResult ret{};
+  ret.success = success;
+  ret.has2fa = !success;
+  std::strncpy(ret.error_message, error.c_str(), sizeof(ret.error_message) - 1);
+  return ret;
 }
 
 bool StandaloneClient::tokenAvailable() {
@@ -97,6 +105,11 @@ void StandaloneClient::disconnectVoiceChannel() {
 bool StandaloneClient::isConnectedVoiceChannel() {
   LOCK_CLIENT
   return _nxcord_client.isConnectedVoiceChannel();
+}
+
+IPCStruct::VoiceStatus StandaloneClient::getVoiceStatus() {
+  LOCK_CLIENT
+  return _nxcord_client.getVoiceStatus();
 }
 
 void StandaloneClient::logout() {
@@ -170,4 +183,14 @@ void StandaloneClient::setVoiceUserMultiplier(int64_t userId,
 float StandaloneClient::getVoiceUserMultiplier(int64_t userId) {
   LOCK_CLIENT
   return _nxcord_client.getVoiceUserMultiplier(userId);
+}
+
+void StandaloneClient::setScreenSharing(bool enabled) {
+  LOCK_CLIENT
+  _nxcord_client.setScreenSharing(enabled);
+}
+
+bool StandaloneClient::isScreenSharing() {
+  LOCK_CLIENT
+  return _nxcord_client.isScreenSharing();
 }

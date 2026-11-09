@@ -33,6 +33,7 @@ class UIElementEditText : public pu::ui::elm::Element {
   void OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) override;
 
   [[nodiscard]] inline std::string getInput() const { return _input; }
+  void edit();
 
  private:
   Rectangle::Ref _outer_rec;

@@ -1,11 +1,13 @@
 #pragma once
 
-#include <sleepy_discord/sleepy_discord.h>
+#include <sleepy_discord/json_inputstream.h>
+#include <sleepy_discord/rapidjson/encodings.h>
 
 #include "zlib_wrapper.hpp"
 
 class WebsocketZlibStream : public SleepyDiscord::JsonInputStream {
  public:
+  static constexpr size_t max_cache_size = 256 * 1024;
   typedef typename rapidjson::UTF8<>::Ch Ch;
 
  private:
@@ -33,20 +35,21 @@ class WebsocketZlibStream : public SleepyDiscord::JsonInputStream {
       return '\0';
     }
     Ch ret = _buf[_current_index];
+    ++_total_read;
     ++_current_index;
     if (_current_index >= _buf_read_size) {
       _buf_read_size = _zlib_wrapper.read(_buf, sizeof(_buf));
       _current_index = 0;
     }
 
-    if (_cache_enabled) {
+    if (_cache_enabled && _cache.size() < max_cache_size) {
       _cache.push_back(ret);
     }
     return ret;
   }
 
   [[nodiscard]] inline size_t Tell() const override {
-    return _total_read - _buf_read_size + _current_index;
+    return _total_read;
   }
 
   inline void SetCache(bool enable) override {

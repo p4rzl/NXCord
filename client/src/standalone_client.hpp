@@ -26,7 +26,7 @@ class StandaloneClient : public NXCordComInterface {
   bool isConnecting() override;
 
   IPCStruct::LoginResult attemptLogin(const IPCStruct::Login &login) override;
-  bool submit2faTicket(const std::string &code) override;
+  IPCStruct::LoginResult submit2faTicket(const std::string &code) override;
   bool tokenAvailable() override;
 
   void startConnection() override;
@@ -38,6 +38,7 @@ class StandaloneClient : public NXCordComInterface {
   void joinVoiceChannel(int64_t serverId, int64_t channelId) override;
   void disconnectVoiceChannel() override;
   bool isConnectedVoiceChannel() override;
+  IPCStruct::VoiceStatus getVoiceStatus() override;
 
   void logout() override;
 
@@ -57,4 +58,7 @@ class StandaloneClient : public NXCordComInterface {
 
   void setVoiceUserMultiplier(int64_t userId, float multiplier) override;
   float getVoiceUserMultiplier(int64_t userId) override;
+
+  void setScreenSharing(bool enabled) override;
+  bool isScreenSharing() override;
 };

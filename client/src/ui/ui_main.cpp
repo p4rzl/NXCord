@@ -25,11 +25,6 @@ void ResultListener::onResultConnecting() { _ui_main.showConnecting(); }
 
 void ResultListener::onResultConnected() {
   _ui_main.showServers();
-  _ui_main.CreateShowDialog(
-      "Info",
-      "A : Confirm\nB : Back\n- : Disconnect from current voice "
-      "channel\n+ : Exit\nX: Disconnect\nY: Settings",
-      {"Ok"}, false);
 }
 
 void ResultListener::onResultServerClick(
@@ -99,8 +94,12 @@ void UIMain::OnLoad() {
         case UIState::Connected:
           break;
         case UIState::ShowChannels:
-        case UIState::Settings:
           showServers();
+          break;
+        case UIState::Settings:
+          _current_state = _settings_return_state;
+          _current_layout = _settings_return;
+          LoadLayout(_current_layout);
           break;
         case UIState::CustomLayout:
           _current_state = _previous_state;
@@ -112,25 +111,16 @@ void UIMain::OnLoad() {
           break;
       }
     } else if (Down & KEY_MINUS) {
-      if (_interface->isConnectedVoiceChannel()) {
-        if (CreateShowDialog("Confirm", "Disconnect from voice channel?",
-                             {"Yes", "No"}, false) == 0) {
-          _interface->disconnectVoiceChannel();
-        }
+      const auto voice = _interface->getVoiceStatus();
+      if (voice.state == IPCStruct::VoiceConnectionState::Connected ||
+          voice.state == IPCStruct::VoiceConnectionState::Connecting) {
+        _interface->disconnectVoiceChannel();
       }
     } else if (Down & KEY_X) {
       switch (_current_state) {
         case UIState::Logged_in:
           _interface->logout();
           showLogin();
-          break;
-        case UIState::Connected:
-        case UIState::ShowChannels:
-          if (CreateShowDialog("Confirm", "Do you want to disconnect?",
-                               {"Yes", "No"}, false) == 0) {
-            _interface->stopConnection();
-            showLoggedIn();
-          }
           break;
         default:
           break;
@@ -151,6 +141,7 @@ void UIMain::showLogin2fa() {
 }
 
 void UIMain::showLoggedIn() {
+  _server_layout.reset();
   loadCustomLayout<UILoggedIn>(UIState::Logged_in);
 }
 
@@ -159,7 +150,14 @@ void UIMain::showConnecting() {
 }
 
 void UIMain::showServers() {
-  loadCustomLayout<UIServersLayout>(UIState::Connected);
+  if (!_server_layout) {
+    loadCustomLayout<UIServersLayout>(UIState::Connected);
+    _server_layout = _current_layout;
+  } else {
+    _current_state = UIState::Connected;
+    _current_layout = _server_layout;
+    LoadLayout(_current_layout);
+  }
 }
 
 void UIMain::showChannels(const IPCStruct::DiscordServer &server) {
@@ -167,6 +165,8 @@ void UIMain::showChannels(const IPCStruct::DiscordServer &server) {
 }
 
 void UIMain::showSettings() {
+  _settings_return = _current_layout;
+  _settings_return_state = _current_state;
   loadCustomLayout<UISettingsLayout>(UIState::Settings);
 }
 
@@ -179,6 +179,7 @@ void UIMain::showLayout(const UICustomLayout::Ref &current,
   _previous_state = _current_state;
   _current_state = UIState::CustomLayout;
   _previous_layout = current;
+  _current_layout = layout;
   layout->setResultListener(_listener);
   LoadLayout(layout);
 }

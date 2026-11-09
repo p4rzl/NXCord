@@ -1,7 +1,9 @@
 #include <mbedtls/error.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include <common/logger.hpp>
+#include <cstring>
 #include <nxcord/mbedtls_wrapper.hpp>
 
 std::string get_mbedtls_error(const char *, int err) {
@@ -47,7 +49,7 @@ MBedTLSWrapper::MBedTLSWrapper(const std::string &hostname) {
 }
 
 MBedTLSWrapper::~MBedTLSWrapper() {
-  if (_net.fd > 0) {
+  if (_net.fd >= 0) {
     Logger::write("Closing connection to %d\n", _net.fd);
     shutdown(_net.fd, SHUT_WR);
     close(_net.fd);
@@ -67,10 +69,13 @@ void MBedTLSWrapper::setFd(int fd) {
 }
 
 bool MBedTLSWrapper::startSSL() {
-  int ret = mbedtls_ssl_handshake(&_ssl);
-  if (ret < 0) {
-    _error = get_mbedtls_error("mbedtls_ssl_handshake", ret);
-    return false;
+  int ret;
+  while ((ret = mbedtls_ssl_handshake(&_ssl)) != 0) {
+    if (ret != MBEDTLS_ERR_SSL_WANT_READ &&
+        ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+      _error = get_mbedtls_error("mbedtls_ssl_handshake", ret);
+      return false;
+    }
   }
   return true;
 }
@@ -80,5 +85,35 @@ int MBedTLSWrapper::write(const unsigned char *data, size_t data_size) {
 }
 
 int MBedTLSWrapper::read(unsigned char *buf, size_t buf_size) {
+  if (_leftover_offset < _leftover_buf.size()) {
+    size_t avail = _leftover_buf.size() - _leftover_offset;
+    size_t to_copy = avail < buf_size ? avail : buf_size;
+    std::memcpy(buf, _leftover_buf.data() + _leftover_offset, to_copy);
+    _leftover_offset += to_copy;
+    if (_leftover_offset >= _leftover_buf.size()) {
+      _leftover_buf.clear();
+      _leftover_offset = 0;
+    }
+    return static_cast<int>(to_copy);
+  }
   return mbedtls_ssl_read(&_ssl, buf, buf_size);
+}
+
+void MBedTLSWrapper::unread(const unsigned char *data, size_t data_size) {
+  if (data_size == 0) {
+    return;
+  }
+  if (_leftover_offset >= _leftover_buf.size()) {
+    _leftover_buf.assign(reinterpret_cast<const char *>(data), data_size);
+    _leftover_offset = 0;
+  } else {
+    _leftover_buf.erase(0, _leftover_offset);
+    _leftover_offset = 0;
+    _leftover_buf.append(reinterpret_cast<const char *>(data), data_size);
+  }
+}
+
+bool MBedTLSWrapper::hasPendingData() const {
+  return (_leftover_offset < _leftover_buf.size()) ||
+         (mbedtls_ssl_get_bytes_avail(&_ssl) > 0);
 }

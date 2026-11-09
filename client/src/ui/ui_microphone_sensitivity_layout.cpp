@@ -1,20 +1,18 @@
 #include "ui_microphone_sensitivity_layout.hpp"
+#include <algorithm>
+#include <cmath>
 
 UIMicrophoneSensitivityLayout::UIMicrophoneSensitivityLayout(
     const UICustomLayout::Interface& interface)
     : UICustomLayout(interface) {
+  addChrome("Soglia microfono", "Regola il livello minimo che attiva la trasmissione della voce.",
+            "Sinistra / Destra Regola   B Torna alle impostazioni   + Chiudi");
   if (!interface->isConnectedVoiceChannel()) {
-    auto error = TextBlock::New(
-        0, 0,
-        "This setting is only available when connected to a voice channel");
-    error->SetX(SCREEN_WIDTH / 2 - error->GetTextWidth() / 2);
-    error->SetY(SCREEN_HEIGHT / 2 - error->GetTextHeight() / 2);
+    auto error = UITheme::text(60, 280,
+        "Entra prima in un canale vocale per misurare il microfono.", 23, UITheme::muted);
     Add(error);
     return;
   }
-
-  auto title = TextBlock::New(0, 0, "Microphone sensitivity");
-  title->SetX(SCREEN_WIDTH / 2 - title->GetTextWidth() / 2);
 
   int sensitivity_width = 900;
   int sensitivity_height = 80;
@@ -25,23 +23,22 @@ UIMicrophoneSensitivityLayout::UIMicrophoneSensitivityLayout(
 
   auto sensitivity_bg =
       Rectangle::New(sensitivity_x, sensitivity_y, sensitivity_width,
-                     sensitivity_height, pu::ui::Color(0x00, 0x00, 0x00, 0x50));
+                     sensitivity_height, UITheme::line);
   auto sensitivity =
       Rectangle::New(sensitivity_x, sensitivity_y, 0, sensitivity_height,
-                     pu::ui::Color(0x00, 0xff, 0x00, 0xff));
+                      UITheme::success);
 
-  _current_threshold = _interface->getMicrophoneThreshold() * threshold_steps;
+  const float configured = _interface->getMicrophoneThreshold();
+  _current_threshold = (std::isfinite(configured) ? std::clamp(configured, 0.0f, 1.0f) : 0.0f) * threshold_steps;
   auto threshold = Rectangle::New(
       sensitivity_x + _current_threshold * threshold_step, sensitivity_y - 10,
-      5, sensitivity_height + 20, pu::ui::Color(0xff, 0x00, 0x00, 0xff));
+      5, sensitivity_height + 20, UITheme::danger);
 
   auto decrease_btn = Button::New(sensitivity_x - 120, sensitivity_y, 100, 80,
-                                  "<", pu::ui::Color(0xff, 0xff, 0xff, 0xff),
-                                  pu::ui::Color(0x00, 0x00, 0xff, 0xff));
+                                  "<", UITheme::text_color, UITheme::selection);
   auto increase_btn =
       Button::New(sensitivity_x + sensitivity_width + 20, sensitivity_y, 100,
-                  80, ">", pu::ui::Color(0xff, 0xff, 0xff, 0xff),
-                  pu::ui::Color(0x00, 0x00, 0xff, 0xff));
+                  80, ">", UITheme::text_color, UITheme::selection);
 
   auto decrease_fun = [this, sensitivity_x, threshold, threshold_steps,
                        threshold_step]() {
@@ -77,11 +74,11 @@ UIMicrophoneSensitivityLayout::UIMicrophoneSensitivityLayout(
   AddThread([this, sensitivity, sensitivity_width]() {
     if (Utils::check_interval(_sensitivity_looked_up, 100)) {
       float volume = _interface->getMicrophoneVolume();
+      volume = std::isfinite(volume) ? std::clamp(volume, 0.0f, 1.0f) : 0.0f;
       sensitivity->SetWidth(volume * static_cast<float>(sensitivity_width));
     }
   });
 
-  Add(title);
   Add(decrease_btn);
   Add(sensitivity_bg);
   Add(sensitivity);

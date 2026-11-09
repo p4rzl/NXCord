@@ -25,12 +25,12 @@ class DiscordUDPClient : public SleepyDiscord::GenericUDPClient {
 
   friend void receive_thread(DiscordUDPClient *udp_client);
 
-  void disconnect();
 
  public:
   DiscordUDPClient();
 
   ~DiscordUDPClient() override;
+  void disconnect() override;
 
   bool connect(const std::string &to, uint16_t port) override;
 

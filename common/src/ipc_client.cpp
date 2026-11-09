@@ -1,4 +1,5 @@
 #include <common/ipc_client.hpp>
+#include <algorithm>
 #include <cstring>
 
 IPCClient::IPCClient() {
@@ -8,17 +9,17 @@ IPCClient::IPCClient() {
 
 IPCClient::~IPCClient() { serviceClose(&_service); }
 
-bool IPCClient::submit2faTicket(const std::string &code) {
-  char code_array[code.size() + 1];
-  strcpy(code_array, code.c_str());
-  code_array[code.size()] = '\0';
-  return sendInOut<bool, char *>(CommandId::Submit2faCode, code_array);
+IPCStruct::LoginResult IPCClient::submit2faTicket(const std::string &code) {
+  IPCStruct::MfaCode mfa{};
+  std::strncpy(mfa.code, code.c_str(), sizeof(mfa.code) - 1);
+  return sendInOut<IPCStruct::LoginResult, IPCStruct::MfaCode>(
+      CommandId::Submit2faCode, mfa);
 }
 
 std::vector<IPCStruct::DiscordServer> IPCClient::getServers() {
   std::vector<IPCStruct::DiscordServer> ret;
   auto servers = sendOut<IPCStruct::DiscordServers>(CommandId::GetServers);
-  for (size_t i = 0; i < servers.size; ++i) {
+  for (size_t i = 0; i < std::min(servers.size, std::size(servers.items)); ++i) {
     ret.push_back(servers.items[i]);
   }
   return ret;
@@ -30,11 +31,11 @@ std::vector<IPCStruct::DiscordChannel> IPCClient::getChannels(
   IPCStruct::DiscordChannelsRequest request = {0, serverId};
 
   IPCStruct::DiscordChannels channels{};
-  while ((channels = sendInOut<IPCStruct::DiscordChannels,
+  while (request.offset < 5 && (channels = sendInOut<IPCStruct::DiscordChannels,
                                IPCStruct::DiscordChannelsRequest>(
               CommandId::GetChannels, request))
              .size > 0) {
-    for (size_t i = 0; i < channels.size; ++i) {
+    for (size_t i = 0; i < std::min(channels.size, std::size(channels.items)); ++i) {
       ret.push_back(channels.items[i]);
     }
     ++request.offset;
@@ -53,7 +54,7 @@ std::vector<IPCStruct::DiscordVoiceState> IPCClient::getCurrentVoiceStates() {
   std::vector<IPCStruct::DiscordVoiceState> ret;
   auto states =
       sendOut<IPCStruct::DiscordVoiceStates>(CommandId::GetVoiceStates);
-  for (size_t i = 0; i < states.size; ++i) {
+  for (size_t i = 0; i < std::min(states.size, std::size(states.items)); ++i) {
     ret.push_back(states.items[i]);
   }
   return ret;

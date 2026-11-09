@@ -8,8 +8,8 @@
 
 extern "C" {
 #ifndef APPLICATION
-// Adjust size as needed.
-#define INNER_HEAP_SIZE 0x100000
+// TLS, REST and Gateway parsing share this heap, also during gameplay.
+#define INNER_HEAP_SIZE 0xC00000
 
 u32 __nx_applet_type = AppletType_None;
 size_t nx_inner_heap_size = INNER_HEAP_SIZE;
@@ -43,15 +43,13 @@ void userAppInit(void) {
   }
 
   SocketInitConfig sockConf = {
-      .bsdsockets_version = 1,
+      .tcp_tx_buf_size = 0x2000,
+      .tcp_rx_buf_size = 0x2000,
+      .tcp_tx_buf_max_size = 0x8000,
+      .tcp_rx_buf_max_size = 0x8000,
 
-      .tcp_tx_buf_size = 0x800,
-      .tcp_rx_buf_size = 0x1000,
-      .tcp_tx_buf_max_size = 0x2EE0,
-      .tcp_rx_buf_max_size = 0x2EE0,
-
-      .udp_tx_buf_size = 0x800,
-      .udp_rx_buf_size = 0x1000,
+      .udp_tx_buf_size = 0x8000,
+      .udp_rx_buf_size = 0xA500,
 
       .sb_efficiency = 4,
   };
@@ -127,7 +125,8 @@ int main(int argc, char **argv) {
 #endif
 
   {
-    Logger::write("Starting new client\n");
+    Logger::write("Starting new client (build %s %s)\n", __DATE__, __TIME__);
+    Logger::write("NXCord %s: voice gateway=8 DAVE=1 (experimental)\n", NXCORD_VERSION);
     NXCordClient client;
     auto settings = NXCordSettings::New();
     client.loadSettings(settings);

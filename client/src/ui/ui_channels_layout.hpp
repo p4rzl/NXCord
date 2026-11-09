@@ -13,6 +13,12 @@ class UIChannelsLayout : public UICustomLayout {
  private:
   Menu::Ref _channels_menu;
   std::vector<IPCStruct::DiscordChannel> _channels;
+  std::vector<IPCStruct::DiscordChannel> _all_channels;
+  std::string _search;
+  TextBlock::Ref _caption, _empty;
+  bool _loaded = false;
+  void rebuild();
+  void updateCaption();
   time_t _channels_lookup_time = 0;
 
  public:

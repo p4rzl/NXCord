@@ -1,22 +1,10 @@
 #!/bin/bash
-
-set -e
-
-rm -rf build
-mkdir build
-cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../DevkitA64Libnx.cmake ..
-make -j16
-cd ..
-mkdir -p release/atmosphere/contents/5600000000000000/flags
-mkdir -p release/switch/.overlays
-cp build/client.nro release/switch/nxcord.nro
-cp build/sysmodule.nsp release/atmosphere/contents/5600000000000000/exefs.nsp
-cp sysmodule/toolbox.json release/atmosphere/contents/5600000000000000/
-touch release/atmosphere/contents/5600000000000000/flags/boot2.flag
-cp build/overlay.ovl release/switch/.overlays/nxcord.ovl
-cd release
-zip -r release.zip *
-mv release.zip ../
-cd ..
-rm -r release
+set -euo pipefail
+cd "$(dirname "$0")"
+build_dir="${BUILD_DIR:-build}"
+# Keep downloaded, hash-verified crypto sources and incremental objects. Do not
+# delete an existing build or a user's release directory during packaging.
+cmake -S . -B "$build_dir" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/DevkitA64Libnx.cmake"
+cmake --build "$build_dir" --parallel "${JOBS:-4}"
+python3 tools/package_release.py --build "$build_dir"

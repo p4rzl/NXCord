@@ -27,26 +27,29 @@ UIRangeSelectorLayout::UIRangeSelectorLayout(const Interface &interface,
 }
 
 void UIRangeSelectorLayout::init() {
-  auto title_text = TextBlock::New(0, 0, _title);
-  title_text->SetX(SCREEN_WIDTH / 2 - title_text->GetTextWidth() / 2);
+  if (_items.empty()) _items.push_back("-");
+  _selected = std::min(_selected, _items.size() - 1);
+  addChrome(_title.AsUTF8(), "La modifica viene applicata subito.",
+            "Sinistra / Destra Regola   B Torna alle impostazioni   + Chiudi");
+  Add(pu::ui::elm::Rectangle::New(36, 206, 1208, 416, UITheme::panel, 12));
 
   int width_sum = 240;
-  auto selected_text = TextBlock::New(0, 0, _items[_selected]);
+  auto selected_text = UITheme::text(0, 0, _items[_selected], 48, UITheme::accent);
   width_sum += selected_text->GetTextWidth();
   selected_text->SetX(SCREEN_WIDTH / 2 - selected_text->GetTextWidth() / 2);
   selected_text->SetY(SCREEN_HEIGHT / 2 - selected_text->GetTextHeight() / 2);
 
   auto decrease_btn = Button::New(
       SCREEN_WIDTH / 2 - width_sum / 2, SCREEN_HEIGHT / 2 - 40, 100, 80, "<",
-      pu::ui::Color(0xff, 0xff, 0xff, 0xff), pu::ui::Color(0, 0, 0xff, 0xff));
+      UITheme::text_color, UITheme::selection);
   auto increase_btn = Button::New(SCREEN_WIDTH / 2 + width_sum / 2 - 100,
                                   SCREEN_HEIGHT / 2 - 40, 100, 80, ">",
-                                  pu::ui::Color(0xff, 0xff, 0xff, 0xff),
-                                  pu::ui::Color(0, 0, 0xff, 0xff));
+                                  UITheme::text_color, UITheme::selection);
 
   auto decrease_fun = [this, selected_text]() {
     if (_selected > 0) {
       selected_text->SetText(_items[--_selected]);
+      selected_text->SetX(SCREEN_WIDTH / 2 - selected_text->GetTextWidth() / 2);
       if (_selected_listener) {
         _selected_listener(_items[_selected], _selected);
       }
@@ -56,6 +59,7 @@ void UIRangeSelectorLayout::init() {
   auto increase_fun = [this, selected_text]() {
     if (_selected + 1 < _items.size()) {
       selected_text->SetText(_items[++_selected]);
+      selected_text->SetX(SCREEN_WIDTH / 2 - selected_text->GetTextWidth() / 2);
       if (_selected_listener) {
         _selected_listener(_items[_selected], _selected);
       }
@@ -75,7 +79,6 @@ void UIRangeSelectorLayout::init() {
     }
   });
 
-  Add(title_text);
   Add(decrease_btn);
   Add(selected_text);
   Add(increase_btn);

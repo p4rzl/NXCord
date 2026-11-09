@@ -19,6 +19,8 @@ class MBedTLSWrapper {
   mbedtls_net_context _net{};
   mbedtls_ssl_context _ssl{};
   mbedtls_ssl_config _ssl_conf{};
+  std::string _leftover_buf;
+  size_t _leftover_offset = 0;
 
  public:
   explicit MBedTLSWrapper(const std::string &hostname);
@@ -38,4 +40,8 @@ class MBedTLSWrapper {
   int write(const unsigned char *data, size_t data_size);
 
   int read(unsigned char *buf, size_t buf_size);
+
+  void unread(const unsigned char *data, size_t data_size);
+
+  [[nodiscard]] bool hasPendingData() const;
 };

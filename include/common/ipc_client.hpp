@@ -95,7 +95,7 @@ class IPCClient : public NXCordComInterface {
         CommandId::AttemptLogin, login);
   }
 
-  bool submit2faTicket(const std::string &code) override;
+  IPCStruct::LoginResult submit2faTicket(const std::string &code) override;
 
   inline bool tokenAvailable() override {
     return sendOut<bool>(CommandId::TokenAvailable);
@@ -117,6 +117,10 @@ class IPCClient : public NXCordComInterface {
 
   inline bool isConnectedVoiceChannel() override {
     return sendOut<bool>(CommandId::IsConnectedVoiceChannel);
+  }
+
+  inline IPCStruct::VoiceStatus getVoiceStatus() override {
+    return sendOut<IPCStruct::VoiceStatus>(CommandId::GetVoiceStatus);
   }
 
   inline void logout() override { send(CommandId::Logout); }
@@ -173,5 +177,13 @@ class IPCClient : public NXCordComInterface {
 
   inline float getVoiceUserMultiplier(int64_t userId) override {
     return sendInOut<float, int64_t>(CommandId::GetVoiceUserMultiplier, userId);
+  }
+
+  inline void setScreenSharing(bool enabled) override {
+    sendIn<bool>(CommandId::SetScreenSharing, enabled);
+  }
+
+  inline bool isScreenSharing() override {
+    return sendOut<bool>(CommandId::IsScreenSharing);
   }
 };

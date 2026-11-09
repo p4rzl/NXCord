@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <cstdint>
 #include <string>
 
 #define SERVICE_NAME "nx:cord"
@@ -34,6 +35,9 @@
     GetConnectedVoiceChannel, \
     SetVoiceUserMultiplier,   \
     GetVoiceUserMultiplier,   \
+    GetVoiceStatus,           \
+    SetScreenSharing,         \
+    IsScreenSharing,          \
   };
 
 namespace IPCStruct {
@@ -46,6 +50,10 @@ struct LoginResult {
   bool success;
   bool has2fa;
   char error_message[0x100];
+};
+
+struct MfaCode {
+  char code[0x20];
 };
 
 struct DiscordServer {
@@ -71,6 +79,15 @@ struct DiscordChannel {
   DiscordChannelType type;
 };
 
+enum class VoiceConnectionState : uint32_t { Disconnected, Connecting, Connected, Failed };
+struct VoiceStatus {
+  VoiceConnectionState state = VoiceConnectionState::Disconnected;
+  DiscordChannel channel{};
+  int32_t close_code = 0;
+  bool screen_sharing = false;
+  char detail[160]{};
+};
+
 struct DiscordChannelsRequest {
   size_t offset;
   int64_t serverId;
@@ -92,8 +109,8 @@ struct Array {
   A items[max];
 };
 
-typedef Array<DiscordServer, 100>
-    DiscordServers;  // 100 is the max number of server you can join
+constexpr size_t max_servers = 200;
+typedef Array<DiscordServer, max_servers> DiscordServers;
 
 typedef Array<DiscordChannel, 100>
     DiscordChannels;  // 500 is the limit of channels, pass them as chunks,

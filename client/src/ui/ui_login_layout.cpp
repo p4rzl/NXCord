@@ -2,17 +2,21 @@
 
 UILoginLayout::UILoginLayout(const Interface &interface)
     : UICustomLayout(interface) {
+  addChrome("Accedi a Discord", "Configura l'account una volta, poi usa l'app o l'overlay durante il gioco.",
+            "X Email / Token   Y Password   A Accedi   + Chiudi");
+  Add(pu::ui::elm::Rectangle::New(36, 206, 784, 416, UITheme::panel, 12));
+  Add(pu::ui::elm::Rectangle::New(850, 206, 394, 416, UITheme::panel, 12));
+  Add(UITheme::text(874, 232, "PRIMA CONFIGURAZIONE", 17, UITheme::accent));
+  Add(UITheme::text(874, 286, "Email e password oppure\ntoken senza password.\n\nI controlli funzionano\nanche con i Joy-Con.\n\nUltrahand usa la sessione\ndel sysmodule in background.", 20, UITheme::muted));
   _email_edit_text =
-      UIElementEditText::New(0, 0, SCREEN_WIDTH / 2, 100, "Email");
+      UIElementEditText::New(56, 226, 744, 84, "Email / Token");
   _password_edit_text =
-      UIElementEditText::New(0, 100, SCREEN_WIDTH / 2, 100, "Password",
+      UIElementEditText::New(56, 326, 744, 84, "Password",
                              UIElementEditText::InputType::PASSWORD);
-  _login_button = Button::New(SCREEN_WIDTH / 4 - 100, 250, 200, 100, "Login",
-                              pu::ui::Color(0xff, 0xff, 0xff, 0xff),
-                              pu::ui::Color(0, 0, 0xff, 0x80));
-  _error_text = TextBlock::New(0, 400, "");
+  _login_button = Button::New(56, 434, 240, 64, "A  Accedi", UITheme::text_color, UITheme::selection);
+  _error_text = UITheme::text(56, 522, "", 18, UITheme::danger);
 
-  _login_button->SetOnClick([this]() {
+  auto submit = [this]() {
     _error_text->SetText("Logging in...");
     IPCStruct::LoginResult ret =
         _interface->attemptLogin(IPCStruct::create_login(
@@ -25,9 +29,15 @@ UILoginLayout::UILoginLayout(const Interface &interface)
       if (strlen(ret.error_message) == 0) {
         _error_text->SetText("Unknown error.");
       } else {
-        _error_text->SetText(ret.error_message);
+        _error_text->SetText(UITheme::wrap(ret.error_message, 66));
       }
     }
+  };
+  _login_button->SetOnClick(submit);
+  SetOnInput([this, submit](u64 down, u64, u64, pu::ui::Touch) {
+    if (down & KEY_X) _email_edit_text->edit();
+    else if (down & KEY_Y) _password_edit_text->edit();
+    else if (down & KEY_A) submit();
   });
 
   AddThread([this]() {

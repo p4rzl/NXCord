@@ -4,7 +4,25 @@
 #include <nxcord/nxcord_audio_player.hpp>
 #include <set>
 
+namespace {
+void drain_released_audout_buffers() {
+  for (int i = 0; i < 32; ++i) {
+    uint32_t released_count = 0;
+    AudioOutBuffer *released_buf = nullptr;
+    Result rc = audoutGetReleasedAudioOutBuffer(&released_buf, &released_count);
+    if (R_FAILED(rc) || (released_count == 0 && released_buf == nullptr)) {
+      break;
+    }
+  }
+}
+}  // namespace
+
 void player_thread(NXCordAudioPlayer *audio_player) {
+  if (!audio_player->_player_thread.isActive() ||
+      !audio_player->_audout_buf.buffer) {
+    return;
+  }
+
   size_t frame_size = SleepyDiscord::AudioTransmissionDetails::proposedLength();
 
   auto *buf = reinterpret_cast<SleepyDiscord::AudioSample *>(
@@ -78,8 +96,23 @@ void player_thread(NXCordAudioPlayer *audio_player) {
     }
   }
 
-  AudioOutBuffer *audout_released_buf = nullptr;
-  audoutPlayBuffer(&audio_player->_audout_buf, &audout_released_buf);
+  if (!audio_player->_player_thread.isActive()) {
+    return;
+  }
+
+  audio_player->_audout_buf.next = nullptr;
+  audio_player->_audout_buf.data_size = Utils::opus_framesize_bytes;
+  audio_player->_audout_buf.data_offset = 0;
+  if (R_SUCCEEDED(audoutAppendAudioOutBuffer(&audio_player->_audout_buf))) {
+    uint32_t released_out_count = 0;
+    AudioOutBuffer *audout_released_buf = nullptr;
+    audoutWaitPlayFinish(&audout_released_buf, &released_out_count,
+                         100000000ULL);
+  }
+
+  if (!audio_player->_player_thread.isActive()) {
+    return;
+  }
 
   time_t time_passed = Utils::current_time_millis() - current_time;
   if (time_passed < 20) {
@@ -88,13 +121,18 @@ void player_thread(NXCordAudioPlayer *audio_player) {
 }
 
 NXCordAudioPlayer::NXCordAudioPlayer()
-    : _player_thread(this, player_thread, 0x4000) {
+    : _player_thread(this, player_thread, 0x8000) {
+  audoutStopAudioOut();
+  drain_released_audout_buffers();
+
   Result rc = audoutStartAudioOut();
   Logger::write("NXCordAudioPlayer: audoutStartAudioOut() returned 0x%x\n", rc);
 
   size_t buffer_size = (Utils::opus_framesize_bytes + 0xfff) & ~0xfff;
   void *out_buf_data = memalign(0x1000, buffer_size);
-  std::memset(out_buf_data, 0, buffer_size);
+  if (out_buf_data) {
+    std::memset(out_buf_data, 0, buffer_size);
+  }
 
   _audout_buf.next = nullptr;
   _audout_buf.buffer = out_buf_data;
@@ -102,19 +140,23 @@ NXCordAudioPlayer::NXCordAudioPlayer()
   _audout_buf.data_size = Utils::opus_framesize_bytes;
   _audout_buf.data_offset = 0;
 
-  rc = audoutAppendAudioOutBuffer(&_audout_buf);
-  Logger::write(
-      "NXCordAudioPlayer: audoutAppendAudioOutBuffer() returned 0x%x\n", rc);
-
-  _player_thread.start();
+  if (out_buf_data) {
+    _player_thread.start();
+  }
 }
 
 NXCordAudioPlayer::~NXCordAudioPlayer() {
   Logger::write("NXCordAudioPlayer: Releasing audio receiver\n");
-  _player_thread.stop();
+  _player_thread.stop([]() {
+    Result rc = audoutStopAudioOut();
+    Logger::write("NXCordAudioPlayer: audoutStopAudioOut() returned 0x%x\n", rc);
+  });
+  drain_released_audout_buffers();
 
-  Result rc = audoutStopAudioOut();
-  Logger::write("NXCordAudioPlayer: audoutStopAudioOut() returned 0x%x\n", rc);
+  if (_audout_buf.buffer) {
+    free(_audout_buf.buffer);
+    _audout_buf.buffer = nullptr;
+  }
 }
 
 void NXCordAudioPlayer::queue(

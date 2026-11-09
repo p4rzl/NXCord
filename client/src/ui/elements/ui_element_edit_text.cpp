@@ -1,14 +1,15 @@
 #include "ui_element_edit_text.hpp"
 
 #include <cstring>
+#include "../ui_theme.hpp"
 
 UIElementEditText::UIElementEditText(s32 x, s32 y, s32 w, s32 h,
                                      const pu::String &title,
                                      InputType inputType)
     : _outer_rec(
-          Rectangle::New(x, y, w, h, pu::ui::Color(0xff, 0xff, 0xff, 0xff), 1)),
-      _inner_title_text(TextBlock::New(x, y, title)),
-      _inner_input_text(TextBlock::New(x, y + h / 3, "")),
+          Rectangle::New(x, y, w, h, UITheme::line, 8)),
+      _inner_title_text(UITheme::text(x, y, pu::String(title).AsUTF8(), 17, UITheme::muted)),
+      _inner_input_text(UITheme::text(x, y + h / 3, "Tocca per modificare", 22)),
       _x(x),
       _y(y),
       _w(w),
@@ -18,8 +19,8 @@ UIElementEditText::UIElementEditText(s32 x, s32 y, s32 w, s32 h,
 void UIElementEditText::OnRender(pu::ui::render::Renderer::Ref &Drawer, s32 X,
                                  s32 Y) {
   _outer_rec->OnRender(Drawer, X, Y);
-  _inner_title_text->OnRender(Drawer, X, Y);
-  _inner_input_text->OnRender(Drawer, X, Y + _h / 3);
+  _inner_title_text->OnRender(Drawer, X + 16, Y + 8);
+  _inner_input_text->OnRender(Drawer, X + 16, Y + 36);
 }
 
 void UIElementEditText::OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) {
@@ -29,6 +30,11 @@ void UIElementEditText::OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) {
 
   if (!Pos.IsEmpty() && Pos.X > _x && Pos.X < _x + _w && Pos.Y > _y &&
       Pos.Y < _y + _h) {
+    edit();
+  }
+}
+
+void UIElementEditText::edit() {
     SwkbdConfig kbd;
     Result rc = swkbdCreate(&kbd, 0);
     if (R_FAILED(rc)) {
@@ -40,9 +46,13 @@ void UIElementEditText::OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) {
     switch (_inputType) {
       case InputType::NORMAL:
         swkbdConfigMakePresetDefault(&kbd);
+        swkbdConfigSetReturnButtonFlag(&kbd, 0);
+        swkbdConfigSetDicFlag(&kbd, 0);
         break;
       case InputType::USERNAME:
         swkbdConfigMakePresetUserName(&kbd);
+        swkbdConfigSetReturnButtonFlag(&kbd, 0);
+        swkbdConfigSetDicFlag(&kbd, 0);
         break;
       case InputType::PASSWORD:
         swkbdConfigMakePresetPassword(&kbd);
@@ -53,6 +63,11 @@ void UIElementEditText::OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) {
     rc = swkbdShow(&kbd, output, sizeof(output));
 
     if (R_SUCCEEDED(rc)) {
+      size_t out_len = strlen(output);
+      while (out_len > 0 &&
+             (output[out_len - 1] == '\r' || output[out_len - 1] == '\n')) {
+        output[--out_len] = '\0';
+      }
       _input = std::string(output);
       if (_inputType == InputType::PASSWORD) {
         if (strlen(output) > 0) {
@@ -62,8 +77,8 @@ void UIElementEditText::OnInput(u64 Down, u64 Up, u64 Held, pu::ui::Touch Pos) {
           output[0] = '\0';
         }
       }
-      _inner_input_text->SetText(output);
+      _inner_input_text->SetText(_inputType != InputType::PASSWORD &&
+          _input.size() > 40 && _input.find('@') == std::string::npos ? "Token inserito" : output);
     }
     swkbdClose(&kbd);
-  }
 }

@@ -14,10 +14,13 @@ void receive_thread(DiscordUDPClient *udp_client) {
 
   while (udp_client->_receive_thread.isActive()) {
     socklen_t len = sizeof(sockaddr_in);
+    sockaddr_in peer{};
     int read =
         recvfrom(udp_client->_fd, buf, sizeof(buf), MSG_WAITALL,
-                 reinterpret_cast<sockaddr *>(&udp_client->_servaddr), &len);
+                 reinterpret_cast<sockaddr *>(&peer), &len);
     if (read > 0) {
+      if (peer.sin_addr.s_addr != udp_client->_servaddr.sin_addr.s_addr ||
+          peer.sin_port != udp_client->_servaddr.sin_port) continue;
       if (first_read) {
         Logger::write("UDP first read %d\n", read);
         first_read = false;
@@ -39,7 +42,8 @@ void receive_thread(DiscordUDPClient *udp_client) {
 }
 
 DiscordUDPClient::DiscordUDPClient()
-    : _receive_thread(this, receive_thread, 0x4000, false) {}
+    // Opus frame scratch plus sodium and DAVE/OpenSSL exceed the old 16 KiB.
+    : _receive_thread(this, receive_thread, 0x20000, false) {}
 
 DiscordUDPClient::~DiscordUDPClient() { disconnect(); }
 
@@ -84,9 +88,16 @@ void DiscordUDPClient::disconnect() {
 void DiscordUDPClient::send(const uint8_t *buffer, size_t buffer_length,
                             SendHandler handler) {
   if (_fd >= 0) {
-    sendto(_fd, reinterpret_cast<const char *>(buffer), buffer_length,
-           MSG_DONTWAIT, reinterpret_cast<const sockaddr *>(&_servaddr),
-           sizeof(_servaddr));
+    for (int attempt = 0; attempt < 4; ++attempt) {
+      ssize_t sent = sendto(_fd, reinterpret_cast<const char *>(buffer),
+                            buffer_length, MSG_DONTWAIT,
+                            reinterpret_cast<const sockaddr *>(&_servaddr),
+                            sizeof(_servaddr));
+      if (sent >= 0 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
+        break;
+      }
+      svcSleepThread(500000);
+    }
   }
   handler();
 }

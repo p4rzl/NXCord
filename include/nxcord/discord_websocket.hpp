@@ -21,6 +21,10 @@ class DiscordWebsocket : public SleepyDiscord::GenericWebsocketConnection {
   bool _zlib_compress;
   std::ofstream _zlib_buf;
   ZlibWrapper _zlib_wrapper;
+  bool _frame_is_data = false;
+  size_t _compressed_bytes = 0;
+  uint8_t _compressed_tail[4]{};
+  int _pending_close = 0;
 
   wslay_event_context_ptr _wslay_event_context = nullptr;
   wslay_event_callbacks _wslay_event_callbacks{};
@@ -38,7 +42,12 @@ class DiscordWebsocket : public SleepyDiscord::GenericWebsocketConnection {
 
   friend void on_msg_recv_callback(wslay_event_context_ptr ctx,
                                    const wslay_event_on_msg_recv_arg *arg,
-                                   void *user_data);
+                                    void *user_data);
+
+  friend void on_frame_start_callback(wslay_event_context_ptr,
+      const wslay_event_on_frame_recv_start_arg *, void *);
+  friend void on_frame_chunk_callback(wslay_event_context_ptr,
+      const wslay_event_on_frame_recv_chunk_arg *, void *);
 
  public:
   DiscordWebsocket(SleepyDiscord::GenericMessageReceiver *message_processor,
@@ -47,7 +56,7 @@ class DiscordWebsocket : public SleepyDiscord::GenericWebsocketConnection {
 
   ~DiscordWebsocket() override;
 
-  int queue_message(const std::string &message);
+  int queue_message(const std::string &message, bool binary = false);
 
   void disconnect(unsigned int, const std::string &);
 
